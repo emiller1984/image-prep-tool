@@ -34,10 +34,6 @@ export default function EditorControls({ image, transforms, setTransforms, targe
     setTransforms(prev => ({ ...prev, scale: newScale }))
   }
 
-  const handleRotationSlider = (e) => {
-    setTransforms(prev => ({ ...prev, rotation: Number(e.target.value) }))
-  }
-
   const handleRotate90 = (direction) => {
     setTransforms(prev => {
       let newRotation = prev.rotation + direction
@@ -94,21 +90,12 @@ export default function EditorControls({ image, transforms, setTransforms, targe
       {/* Rotation */}
       <div className="bg-surface border border-border rounded-lg p-4">
         <div className="flex items-center justify-between mb-2">
-          <label className="text-xs font-semibold uppercase tracking-wider text-text-muted" htmlFor="rotation-slider">
+          <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">
             Rotation
-          </label>
+          </span>
           <span className="text-xs font-mono text-text-muted">{transforms.rotation}&deg;</span>
         </div>
-        <input
-          id="rotation-slider"
-          type="range"
-          min="-180"
-          max="180"
-          value={transforms.rotation}
-          onChange={handleRotationSlider}
-          className="w-full"
-        />
-        <div className="flex gap-2 mt-2">
+        <div className="flex gap-2">
           <button
             onClick={() => handleRotate90(-90)}
             className="px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-surface hover:bg-gray-50 text-text-secondary transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1"

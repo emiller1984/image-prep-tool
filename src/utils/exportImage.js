@@ -33,7 +33,7 @@ export default function exportImage(image, targetWidth, targetHeight, transforms
   ctx.drawImage(source, -sourceW / 2, -sourceH / 2, sourceW, sourceH)
   ctx.restore()
 
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.82)
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
   return dataUrl
 }
 
