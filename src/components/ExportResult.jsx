@@ -1,16 +1,21 @@
 import { useMemo } from 'react'
 import formatFileSize from '../utils/formatFileSize'
-import exportImage, { dataUrlToBlob } from '../utils/exportImage'
+import exportImage, { dataUrlToBlob, EXTENSIONS, FORMAT_LABELS } from '../utils/exportImage'
 
 export default function ExportResult({ image, imageInfo, preset, transforms, onBackToEditor, onNewImage }) {
+  const fileType = preset.fileType || 'jpeg'
+  const compression = preset.compression ?? 0.92
+  const ext = EXTENSIONS[fileType] || 'jpg'
+  const formatLabel = FORMAT_LABELS[fileType] || 'JPG'
+
   const { dataUrl, exportedSize } = useMemo(() => {
-    const url = exportImage(image, preset.width, preset.height, transforms)
+    const url = exportImage(image, preset.width, preset.height, transforms, fileType, compression)
     const blob = dataUrlToBlob(url)
     return { dataUrl: url, exportedSize: blob.size }
-  }, [image, preset, transforms])
+  }, [image, preset, transforms, fileType, compression])
 
   const baseName = imageInfo.name.replace(/\.[^.]+$/, '')
-  const filename = `${baseName}_${preset.width}x${preset.height}.jpg`
+  const filename = `${baseName}_${preset.width}x${preset.height}.${ext}`
 
   const handleDownload = () => {
     const link = document.createElement('a')
@@ -57,7 +62,7 @@ export default function ExportResult({ image, imageInfo, preset, transforms, onB
           <div className="space-y-1 text-sm text-text-secondary">
             <div className="truncate" title={filename}>{filename}</div>
             <div>{preset.width} &times; {preset.height}</div>
-            <div>{formatFileSize(exportedSize)} &middot; JPG</div>
+            <div>{formatFileSize(exportedSize)} &middot; {formatLabel}</div>
           </div>
         </div>
       </div>

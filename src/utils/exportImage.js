@@ -1,10 +1,16 @@
 import downsample from './downsample'
 
+const MIME_TYPES = { jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' }
+const EXTENSIONS = { jpeg: 'jpg', png: 'png', webp: 'webp' }
+const FORMAT_LABELS = { jpeg: 'JPG', png: 'PNG', webp: 'WebP' }
+
+export { EXTENSIONS, FORMAT_LABELS }
+
 /**
- * Render the image to a canvas at the exact target dimensions and return a JPEG blob.
+ * Render the image to a canvas at the exact target dimensions and return a data URL.
  * Uses stepped downsampling for high-quality resampling when scaling down.
  */
-export default function exportImage(image, targetWidth, targetHeight, transforms) {
+export default function exportImage(image, targetWidth, targetHeight, transforms, fileType = 'jpeg', compression = 0.92) {
   const canvas = document.createElement('canvas')
   canvas.width = targetWidth
   canvas.height = targetHeight
@@ -12,9 +18,11 @@ export default function exportImage(image, targetWidth, targetHeight, transforms
   ctx.imageSmoothingEnabled = true
   ctx.imageSmoothingQuality = 'high'
 
-  // White background
-  ctx.fillStyle = '#FFFFFF'
-  ctx.fillRect(0, 0, targetWidth, targetHeight)
+  // White background for JPEG/WebP (PNG preserves transparency)
+  if (fileType === 'jpeg' || fileType === 'webp') {
+    ctx.fillStyle = '#FFFFFF'
+    ctx.fillRect(0, 0, targetWidth, targetHeight)
+  }
 
   const drawW = image.naturalWidth * transforms.scale
   const drawH = image.naturalHeight * transforms.scale
@@ -33,7 +41,11 @@ export default function exportImage(image, targetWidth, targetHeight, transforms
   ctx.drawImage(source, -sourceW / 2, -sourceH / 2, sourceW, sourceH)
   ctx.restore()
 
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
+  const mime = MIME_TYPES[fileType] || 'image/jpeg'
+  // PNG ignores the quality parameter per spec
+  const dataUrl = fileType === 'png'
+    ? canvas.toDataURL(mime)
+    : canvas.toDataURL(mime, compression)
   return dataUrl
 }
 
