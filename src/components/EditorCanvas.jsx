@@ -1,5 +1,6 @@
 import { useRef, useEffect, useCallback } from 'react'
 import useCanvasRenderer from '../hooks/useCanvasRenderer'
+import downsample from '../utils/downsample'
 
 export default function EditorCanvas({ image, transforms, targetWidth, targetHeight, onPan, onZoom }) {
   const containerRef = useRef(null)
@@ -32,6 +33,8 @@ export default function EditorCanvas({ image, transforms, targetWidth, targetHei
     canvas.style.height = `${displayHeight}px`
 
     const ctx = canvas.getContext('2d')
+    ctx.imageSmoothingEnabled = true
+    ctx.imageSmoothingQuality = 'high'
     ctx.scale(dpr, dpr)
 
     // Clear
@@ -40,6 +43,14 @@ export default function EditorCanvas({ image, transforms, targetWidth, targetHei
     // White background
     ctx.fillStyle = '#FFFFFF'
     ctx.fillRect(0, 0, displayWidth, displayHeight)
+
+    // Pre-scale image using stepped downsampling for quality
+    const drawW = image.naturalWidth * transforms.scale * displayScale
+    const drawH = image.naturalHeight * transforms.scale * displayScale
+    const preScaled = downsample(image, drawW, drawH)
+    const source = preScaled || image
+    const sourceW = preScaled ? preScaled.width : drawW
+    const sourceH = preScaled ? preScaled.height : drawH
 
     ctx.save()
 
@@ -55,10 +66,8 @@ export default function EditorCanvas({ image, transforms, targetWidth, targetHei
     // Flip
     ctx.scale(transforms.flipH ? -1 : 1, transforms.flipV ? -1 : 1)
 
-    // Draw image centered at origin
-    const drawW = image.naturalWidth * transforms.scale * displayScale
-    const drawH = image.naturalHeight * transforms.scale * displayScale
-    ctx.drawImage(image, -drawW / 2, -drawH / 2, drawW, drawH)
+    // Draw pre-scaled image centered at origin
+    ctx.drawImage(source, -sourceW / 2, -sourceH / 2, sourceW, sourceH)
 
     ctx.restore()
   }, [image, transforms, displayWidth, displayHeight, displayScale])
