@@ -98,7 +98,7 @@ export default function Editor({ image, preset, onExport, onBack }) {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xs uppercase font-semibold tracking-wider text-text-muted">
-          Edit Image &mdash; {preset.label} ({targetWidth}&times;{targetHeight})
+          Edit Image &mdash; {preset.name} ({targetWidth}&times;{targetHeight})
         </h2>
         <button
           onClick={onBack}

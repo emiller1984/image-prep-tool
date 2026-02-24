@@ -1,6 +1,4 @@
-import presets from '../config/presets'
-
-export default function PresetSelector({ selectedPreset, onSelect }) {
+export default function PresetSelector({ presets, selectedPreset, onSelect }) {
   return (
     <div>
       <h2 className="text-xs uppercase font-semibold tracking-wider text-text-muted mb-4">
@@ -38,13 +36,13 @@ export default function PresetSelector({ selectedPreset, onSelect }) {
                 />
               </div>
               <div className="text-sm font-medium text-text-primary truncate">
-                {preset.label}
+                {preset.name}
               </div>
               <div className="text-xs text-text-muted mt-0.5">
                 {preset.width} &times; {preset.height}
               </div>
               <div className="text-[11px] text-text-faint mt-0.5 truncate">
-                {preset.useCase}
+                {preset.description}
               </div>
             </button>
           )
