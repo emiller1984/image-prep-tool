@@ -1,4 +1,5 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import StepIndicator from './StepIndicator'
 import PresetSelector from './PresetSelector'
 import ImageUploader from './ImageUploader'
@@ -11,11 +12,30 @@ import resolvePresetDimensions from '../utils/resolvePresetDimensions'
 const STEPS = { SELECT: 1, EDIT: 2, EXPORT: 3 }
 
 export default function MainApp() {
-  const [step, setStep] = useState(STEPS.SELECT)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
   const [selectedPreset, setSelectedPreset] = useState(null)
   const [exportTransforms, setExportTransforms] = useState(null)
   const { image, imageInfo, error, loading, loadImage, clearImage } = useImageLoader()
   const { presets, loading: presetsLoading } = usePresets()
+
+  // Derive step from URL search params
+  const urlStep = parseInt(searchParams.get('step') || '1', 10)
+
+  // Validate: can't be on step 2/3 without required data
+  const step = useMemo(() => {
+    if (urlStep === STEPS.EDIT && (!image || !selectedPreset)) return STEPS.SELECT
+    if (urlStep === STEPS.EXPORT && (!image || !selectedPreset || !exportTransforms)) return STEPS.SELECT
+    if ([STEPS.SELECT, STEPS.EDIT, STEPS.EXPORT].includes(urlStep)) return urlStep
+    return STEPS.SELECT
+  }, [urlStep, image, selectedPreset, exportTransforms])
+
+  // Fix URL if step was corrected due to missing data
+  useEffect(() => {
+    if (step !== urlStep) {
+      setSearchParams(step === STEPS.SELECT ? {} : { step: String(step) }, { replace: true })
+    }
+  }, [step, urlStep, setSearchParams])
 
   const resolvedPreset = useMemo(() => {
     if (!selectedPreset || !image) return selectedPreset
@@ -39,29 +59,29 @@ export default function MainApp() {
 
   const handleContinueToEditor = useCallback(() => {
     if (selectedPreset && image) {
-      setStep(STEPS.EDIT)
+      setSearchParams({ step: '2' })
     }
-  }, [selectedPreset, image])
+  }, [selectedPreset, image, setSearchParams])
 
   const handleExport = useCallback((transforms) => {
     setExportTransforms(transforms)
-    setStep(STEPS.EXPORT)
-  }, [])
+    setSearchParams({ step: '3' })
+  }, [setSearchParams])
 
   const handleBackToEditor = useCallback(() => {
-    setStep(STEPS.EDIT)
-  }, [])
+    navigate(-1)
+  }, [navigate])
 
   const handleBackToSelect = useCallback(() => {
-    setStep(STEPS.SELECT)
-  }, [])
+    navigate(-1)
+  }, [navigate])
 
   const handleNewImage = useCallback(() => {
     clearImage()
     setSelectedPreset(null)
     setExportTransforms(null)
-    setStep(STEPS.SELECT)
-  }, [clearImage])
+    setSearchParams({}, { replace: true })
+  }, [clearImage, setSearchParams])
 
   return (
     <div className="min-h-screen bg-background font-sans">
