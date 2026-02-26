@@ -1,3 +1,9 @@
+function getAspectRatio(w, h) {
+  const gcd = (a, b) => (b === 0 ? a : gcd(b, a % b))
+  const d = gcd(w, h)
+  return `${w / d}:${h / d}`
+}
+
 export default function PresetSelector({ presets, selectedPreset, onSelect }) {
   return (
     <div>
@@ -40,6 +46,7 @@ export default function PresetSelector({ presets, selectedPreset, onSelect }) {
               </div>
               <div className="text-xs text-text-muted mt-0.5">
                 {preset.width} &times; {preset.height}
+                <span className="ml-1 opacity-60">· {getAspectRatio(preset.width, preset.height)}</span>
               </div>
               <div className="text-[11px] text-text-faint mt-0.5 truncate">
                 {preset.description}
