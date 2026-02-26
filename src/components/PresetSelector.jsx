@@ -1,5 +1,11 @@
 import presets from '../config/presets'
 
+function getAspectRatio(width, height) {
+  let a = width, b = height
+  while (b) { [a, b] = [b, a % b] }
+  return `${width / a}:${height / a}`
+}
+
 export default function PresetSelector({ selectedPreset, onSelect }) {
   return (
     <div>
@@ -42,6 +48,7 @@ export default function PresetSelector({ selectedPreset, onSelect }) {
               </div>
               <div className="text-xs text-text-muted mt-0.5">
                 {preset.width} &times; {preset.height}
+                <span className="ml-1 text-text-faint">({getAspectRatio(preset.width, preset.height)})</span>
               </div>
               <div className="text-[11px] text-text-faint mt-0.5 truncate">
                 {preset.useCase}
