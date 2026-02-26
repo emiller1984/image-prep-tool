@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import StepIndicator from './StepIndicator'
 import PresetSelector from './PresetSelector'
 import ImageUploader from './ImageUploader'
@@ -6,6 +6,7 @@ import Editor from './Editor'
 import ExportResult from './ExportResult'
 import useImageLoader from '../hooks/useImageLoader'
 import usePresets from '../hooks/usePresets'
+import resolvePresetDimensions from '../utils/resolvePresetDimensions'
 
 const STEPS = { SELECT: 1, EDIT: 2, EXPORT: 3 }
 
@@ -15,6 +16,13 @@ export default function MainApp() {
   const [exportTransforms, setExportTransforms] = useState(null)
   const { image, imageInfo, error, loading, loadImage, clearImage } = useImageLoader()
   const { presets, loading: presetsLoading } = usePresets()
+
+  const resolvedPreset = useMemo(() => {
+    if (!selectedPreset || !image) return selectedPreset
+    if (selectedPreset.sizeMode !== 'widthOnly') return selectedPreset
+    const { targetWidth, targetHeight } = resolvePresetDimensions(selectedPreset, image)
+    return { ...selectedPreset, width: targetWidth, height: targetHeight }
+  }, [selectedPreset, image])
 
   const handlePresetSelect = useCallback((preset) => {
     if (step === STEPS.EDIT && selectedPreset?.id !== preset.id) {
@@ -103,20 +111,20 @@ export default function MainApp() {
             </div>
           )}
 
-          {step === STEPS.EDIT && image && selectedPreset && (
+          {step === STEPS.EDIT && image && resolvedPreset && (
             <Editor
               image={image}
-              preset={selectedPreset}
+              preset={resolvedPreset}
               onExport={handleExport}
               onBack={handleBackToSelect}
             />
           )}
 
-          {step === STEPS.EXPORT && image && selectedPreset && exportTransforms && (
+          {step === STEPS.EXPORT && image && resolvedPreset && exportTransforms && (
             <ExportResult
               image={image}
               imageInfo={imageInfo}
-              preset={selectedPreset}
+              preset={resolvedPreset}
               transforms={exportTransforms}
               onBackToEditor={handleBackToEditor}
               onNewImage={handleNewImage}
