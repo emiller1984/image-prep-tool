@@ -25,7 +25,7 @@ src/
 ├── App.jsx                     # Root component, step routing, global state
 ├── main.jsx                    # React entry point
 ├── config/
-│   └── presets.js              # 8 email size presets (single source of truth)
+│   └── presets.js              # Default email size presets (fallback when API unavailable)
 ├── components/
 │   ├── StepIndicator.jsx       # 3-step progress bar
 │   ├── PresetSelector.jsx      # Preset card grid with aspect-ratio thumbnails
@@ -38,10 +38,11 @@ src/
 │   ├── useImageLoader.js       # File → HTMLImageElement, returns {image, imageInfo, error, loading, loadImage, clearImage}
 │   └── useCanvasRenderer.js    # Canvas draw helper (currently used indirectly)
 ├── utils/
-│   ├── calculateTransforms.js  # calculateFitScale(), calculateFillScale()
-│   ├── downsample.js           # Stepped 50% downsampling for high-quality scaling
-│   ├── exportImage.js          # exportImage() → JPEG data URL, dataUrlToBlob()
-│   └── formatFileSize.js       # bytes → human-readable string
+│   ├── calculateTransforms.js      # calculateFitScale(), calculateFillScale()
+│   ├── downsample.js               # Stepped 50% downsampling for high-quality scaling
+│   ├── exportImage.js              # exportImage() → JPEG data URL, dataUrlToBlob()
+│   ├── formatFileSize.js           # bytes → human-readable string
+│   └── resolvePresetDimensions.js  # Resolves effective target dimensions (handles widthOnly mode)
 └── styles/
     └── index.css               # Tailwind directives + checkerboard pattern + range input styling
 ```
@@ -75,9 +76,12 @@ Direct Canvas downscaling uses bilinear interpolation, which produces jagged res
 - This applies to both the editor preview AND the export pipeline
 
 ## Key Design Decisions
-- **Presets** are defined in `src/config/presets.js` — this is the single source of truth for all target sizes. Each preset has: `id`, `label`, `width`, `height`, `useCase`.
+- **Presets** are managed via the admin page (`/#/admin`) and persisted to a PHP backend (`/api/data/presets.json`). Default presets in `src/config/presets.js` are used as fallback. Each preset has: `id`, `name`, `width`, `height` (optional for widthOnly), `sizeMode`, `description`, `fileType`, `compression`.
+- **Sizing modes:** Presets support two modes via the `sizeMode` field:
+  - `'fixed'` (default) — both width and height are set; the user crops/positions within the fixed aspect ratio frame.
+  - `'widthOnly'` — only width is set; the exported height is determined by the source image's natural aspect ratio. The effective dimensions are resolved in `MainApp.jsx` via `resolvePresetDimensions()`, so all downstream components (Editor, EditorCanvas, exportImage) receive concrete numbers and need no special handling.
 - **Rotation** is restricted to 90° increments only (no free-form rotation slider).
-- **Export** is always JPEG at 92% quality with white (#FFFFFF) background fill.
+- **Export** format and compression are configurable per preset (JPEG/PNG/WebP). Default is JPEG at 92% quality with white (#FFFFFF) background fill.
 - **Scale percentage** displayed in the UI is relative to the "fit" scale (100% = image fits perfectly within the target frame).
 - **Keyboard shortcuts** in the editor: Arrow keys ±1px (Shift for ±10px), +/- zoom, R rotate 90°, Esc reset.
 - **Vite base path** is set to `/image-prep-tool/` for subdirectory hosting.
@@ -104,14 +108,16 @@ Direct Canvas downscaling uses bilinear interpolation, which produces jagged res
 - Verify white background with no transparency in exported JPGs
 - Test stepped downsampling quality with logos and fine-detail images scaled down significantly
 - Verify pan, zoom, and flip all carry through correctly from editor to export
+- Test width-only presets: verify exported width matches the preset and height matches the source image's aspect ratio
+- Test switching between fixed and width-only modes in the admin form
 
 ## Common Tasks
 
 ### Adding a new preset
-Add an entry to the array in `src/config/presets.js`. No other changes needed — the grid and all logic read from this file.
+Use the admin page (`/#/admin`) to add presets via the UI, then click Publish. Default presets can also be edited in `src/config/presets.js` as a fallback.
 
 ### Changing export quality or format
-Edit the `canvas.toDataURL()` call in `src/utils/exportImage.js`. Currently `('image/jpeg', 0.92)`.
+Export format and compression are now configurable per preset via the admin page. The default fallback is JPEG at 92% quality (`src/utils/exportImage.js`).
 
 ### Changing the transform pipeline
 Update BOTH `src/components/EditorCanvas.jsx` (preview) and `src/utils/exportImage.js` (export) — they must stay in sync. The transform order is: translate → rotate → flip → draw.
