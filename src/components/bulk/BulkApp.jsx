@@ -159,7 +159,7 @@ export default function BulkApp() {
   const urlStep = parseInt(searchParams.get('step') || '1', 10)
   const loadedImages = useMemo(() => state.images.filter(img => img.image && !img.loading && !img.error), [state.images])
   const selectedPresetIdsSet = useMemo(() => new Set(state.selectedPresetIds), [state.selectedPresetIds])
-  const selectedPresets = useMemo(() => presets.filter(p => selectedPresetIdsSet.has(p.id)), [presets, selectedPresetIdsSet])
+  const selectedPresets = useMemo(() => (presets || []).filter(p => selectedPresetIdsSet.has(p.id)), [presets, selectedPresetIdsSet])
 
   // Validate step
   const step = useMemo(() => {
@@ -317,7 +317,7 @@ export default function BulkApp() {
             <BulkUploadStep
               images={state.images}
               selectedPresetIds={selectedPresetIdsSet}
-              presets={presetsLoading ? [] : presets}
+              presets={presetsLoading ? [] : (presets || [])}
               onAddFiles={handleAddFiles}
               onRemoveImage={handleRemoveImage}
               onTogglePreset={handleTogglePreset}
