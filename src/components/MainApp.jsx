@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useSearchParams, useNavigate, Link } from 'react-router-dom'
 import StepIndicator from './StepIndicator'
 import PresetSelector from './PresetSelector'
 import ImageUploader from './ImageUploader'
@@ -90,9 +90,14 @@ export default function MainApp() {
         <h1 className="text-[26px] font-bold text-text-primary text-center mb-2">
           Email Image Resizer
         </h1>
-        <p className="text-sm text-text-muted text-center mb-6">
+        <p className="text-sm text-text-muted text-center mb-1">
           Resize and position images for email templates
         </p>
+        <div className="text-center mb-6">
+          <Link to="/bulk" className="text-sm text-primary hover:text-blue-600 transition-colors">
+            Bulk Mode &rarr;
+          </Link>
+        </div>
 
         {/* Step Indicator */}
         <StepIndicator currentStep={step} />
