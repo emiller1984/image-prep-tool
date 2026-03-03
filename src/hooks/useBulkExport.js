@@ -10,15 +10,19 @@ export default function useBulkExport() {
   const [error, setError] = useState(null)
   const abortRef = useRef(false)
 
-  const startExport = useCallback(async (images, presets, transforms) => {
+  const startExport = useCallback(async (images, allPresets, imagePresetSelections, transforms) => {
     abortRef.current = false
     setError(null)
     setResult(null)
 
-    // Build the list of all combinations
+    // Build combinations from per-image selections
+    const presetMap = Object.fromEntries(allPresets.map(p => [p.id, p]))
     const combinations = []
     for (const img of images) {
-      for (const preset of presets) {
+      const presetIds = imagePresetSelections[img.id] || []
+      for (const presetId of presetIds) {
+        const preset = presetMap[presetId]
+        if (!preset) continue
         const key = `${img.id}::${preset.id}`
         const { targetWidth, targetHeight } = resolvePresetDimensions(preset, img.image)
         combinations.push({

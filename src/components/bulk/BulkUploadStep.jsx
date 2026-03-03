@@ -1,37 +1,80 @@
 import MultiImageUploader from './MultiImageUploader'
 import PresetMultiSelector from './PresetMultiSelector'
+import ImagePresetAssigner from './ImagePresetAssigner'
 
-export default function BulkUploadStep({ images, selectedPresetIds, presets, onAddFiles, onRemoveImage, onTogglePreset, onSelectAll, onDeselectAll, onContinue }) {
-  const loadedCount = images.filter(img => !img.loading && !img.error).length
-  const presetCount = selectedPresetIds.size
-  const combinationCount = loadedCount * presetCount
-  const canContinue = loadedCount > 0 && presetCount > 0
+export default function BulkUploadStep({
+  images,
+  imagePresetSelections,
+  presets,
+  onAddFiles,
+  onRemoveImage,
+  onToggleImagePreset,
+  onSetImagePresets,
+  onApplyPresetsToAll,
+  onSetDefaultPresets,
+  onContinue,
+}) {
+  const loadedImages = images.filter(img => !img.loading && !img.error)
+  const loadingCount = images.filter(img => img.loading).length
+
+  const totalCombinations = loadedImages.reduce(
+    (sum, img) => sum + (imagePresetSelections[img.id]?.length || 0), 0
+  )
+  const canContinue = loadedImages.length > 0 && totalCombinations > 0
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <MultiImageUploader
-          images={images}
-          onAddFiles={onAddFiles}
-          onRemoveImage={onRemoveImage}
-        />
-        <PresetMultiSelector
-          presets={presets}
-          selectedPresetIds={selectedPresetIds}
-          onTogglePreset={onTogglePreset}
-          onSelectAll={onSelectAll}
-          onDeselectAll={onDeselectAll}
-        />
-      </div>
+      {/* Default presets bar */}
+      <PresetMultiSelector
+        presets={presets}
+        onApplyToAll={onApplyPresetsToAll}
+        onSetDefaults={onSetDefaultPresets}
+      />
 
+      {/* Upload zone */}
+      <MultiImageUploader
+        onAddFiles={onAddFiles}
+        loadingCount={loadingCount}
+      />
+
+      {/* Error messages */}
+      {images.some(img => img.error) && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-error">
+          {images.filter(img => img.error).map(img => (
+            <div key={img.id}>Failed to load: {img.file.name}</div>
+          ))}
+        </div>
+      )}
+
+      {/* Per-image preset assignment cards */}
+      {loadedImages.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-xs uppercase font-semibold tracking-wider text-text-muted">
+            Assign Presets ({loadedImages.length} image{loadedImages.length !== 1 ? 's' : ''})
+          </h2>
+          {loadedImages.map(img => (
+            <ImagePresetAssigner
+              key={img.id}
+              image={img}
+              allPresets={presets}
+              selectedPresetIds={imagePresetSelections[img.id] || []}
+              onTogglePreset={(presetId) => onToggleImagePreset(img.id, presetId)}
+              onApplyToAll={onApplyPresetsToAll}
+              onRemove={() => onRemoveImage(img.id)}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Footer */}
       <div className="flex items-center justify-between pt-2 border-t border-border">
         <div className="text-sm text-text-muted">
-          {loadedCount > 0 && presetCount > 0 ? (
-            <>
-              {loadedCount} image{loadedCount !== 1 ? 's' : ''} &times; {presetCount} preset{presetCount !== 1 ? 's' : ''} = <span className="font-semibold text-text-secondary">{combinationCount} combination{combinationCount !== 1 ? 's' : ''}</span>
-            </>
+          {totalCombinations > 0 ? (
+            <span className="font-semibold text-text-secondary">
+              {totalCombinations} combination{totalCombinations !== 1 ? 's' : ''} to export
+            </span>
           ) : (
-            <>Select images and presets to continue</>
+            <>Upload images and assign presets to continue</>
           )}
         </div>
         <button

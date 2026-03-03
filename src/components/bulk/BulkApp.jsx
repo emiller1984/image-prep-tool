@@ -16,7 +16,7 @@ const STEPS = { UPLOAD: 1, REVIEW: 2, EXPORT: 3 }
 
 const initialState = {
   images: [],
-  selectedPresetIds: [],
+  imagePresetSelections: {},  // { [imageId]: [presetId, ...] }
   transforms: {},
   editedCells: [],
 }
@@ -24,7 +24,8 @@ const initialState = {
 function bulkReducer(state, action) {
   switch (action.type) {
     case 'ADD_IMAGES': {
-      const newEntries = action.payload.map(file => ({
+      const { files, defaultPresetIds } = action.payload
+      const newEntries = files.map(file => ({
         id: `img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         file,
         image: null,
@@ -32,7 +33,11 @@ function bulkReducer(state, action) {
         loading: true,
         error: null,
       }))
-      return { ...state, images: [...state.images, ...newEntries] }
+      const newSelections = { ...state.imagePresetSelections }
+      for (const entry of newEntries) {
+        newSelections[entry.id] = [...defaultPresetIds]
+      }
+      return { ...state, images: [...state.images, ...newEntries], imagePresetSelections: newSelections }
     }
 
     case 'IMAGE_LOADED': {
@@ -59,7 +64,6 @@ function bulkReducer(state, action) {
       const id = action.payload
       const entry = state.images.find(e => e.id === id)
       if (entry?.image?.src) URL.revokeObjectURL(entry.image.src)
-      // Clean up transforms and editedCells for removed image
       const newTransforms = { ...state.transforms }
       const newEdited = [...state.editedCells]
       for (const key of Object.keys(newTransforms)) {
@@ -67,42 +71,69 @@ function bulkReducer(state, action) {
           delete newTransforms[key]
         }
       }
+      const { [id]: _removed, ...remainingSelections } = state.imagePresetSelections
       return {
         ...state,
         images: state.images.filter(e => e.id !== id),
         transforms: newTransforms,
         editedCells: newEdited.filter(k => !k.startsWith(`${id}::`)),
+        imagePresetSelections: remainingSelections,
       }
     }
 
-    case 'TOGGLE_PRESET': {
+    case 'TOGGLE_IMAGE_PRESET': {
+      const { imageId, presetId } = action.payload
+      const current = state.imagePresetSelections[imageId] || []
+      const index = current.indexOf(presetId)
+      const updated = [...current]
+      if (index >= 0) updated.splice(index, 1)
+      else updated.push(presetId)
+      return {
+        ...state,
+        imagePresetSelections: { ...state.imagePresetSelections, [imageId]: updated },
+      }
+    }
+
+    case 'SET_IMAGE_PRESETS': {
+      const { imageId, presetIds } = action.payload
+      return {
+        ...state,
+        imagePresetSelections: { ...state.imagePresetSelections, [imageId]: presetIds },
+      }
+    }
+
+    case 'APPLY_PRESETS_TO_ALL': {
+      const presetIds = action.payload
+      const newSelections = { ...state.imagePresetSelections }
+      for (const img of state.images) {
+        if (img.image && !img.loading && !img.error) {
+          newSelections[img.id] = [...presetIds]
+        }
+      }
+      return { ...state, imagePresetSelections: newSelections }
+    }
+
+    case 'REMOVE_PRESET_FROM_ALL': {
       const presetId = action.payload
-      const ids = [...state.selectedPresetIds]
-      const index = ids.indexOf(presetId)
-      if (index >= 0) {
-        ids.splice(index, 1)
-      } else {
-        ids.push(presetId)
+      const newSelections = { ...state.imagePresetSelections }
+      for (const id of Object.keys(newSelections)) {
+        newSelections[id] = newSelections[id].filter(pid => pid !== presetId)
       }
-      return { ...state, selectedPresetIds: ids }
-    }
-
-    case 'SELECT_ALL_PRESETS': {
-      return { ...state, selectedPresetIds: action.payload.map(p => p.id) }
-    }
-
-    case 'DESELECT_ALL_PRESETS': {
-      return { ...state, selectedPresetIds: [] }
+      return { ...state, imagePresetSelections: newSelections }
     }
 
     case 'INIT_COMBINATIONS': {
-      const { presets, images } = action.payload
+      const { allPresets, images, imagePresetSelections } = action.payload
+      const presetMap = Object.fromEntries(allPresets.map(p => [p.id, p]))
       const newTransforms = { ...state.transforms }
       for (const img of images) {
         if (!img.image) continue
-        for (const preset of presets) {
+        const presetIds = imagePresetSelections[img.id] || []
+        for (const presetId of presetIds) {
+          const preset = presetMap[presetId]
+          if (!preset) continue
           const key = `${img.id}::${preset.id}`
-          if (newTransforms[key]) continue // Preserve existing transforms
+          if (newTransforms[key]) continue
           const { targetWidth, targetHeight } = resolvePresetDimensions(preset, img.image)
           const fillScale = calculateFillScale(
             img.image.naturalWidth, img.image.naturalHeight,
@@ -133,7 +164,6 @@ function bulkReducer(state, action) {
     }
 
     case 'RESET': {
-      // Revoke all object URLs
       state.images.forEach(e => {
         if (e.image?.src) URL.revokeObjectURL(e.image.src)
       })
@@ -154,20 +184,36 @@ export default function BulkApp() {
   const [editingKey, setEditingKey] = useState(null)
   const { progress, result, error: exportError, startExport, reset: resetExport } = useBulkExport()
   const loadingIdsRef = useRef(new Set())
+  const defaultPresetIdsRef = useRef([])
 
   // Step derivation from URL
   const urlStep = parseInt(searchParams.get('step') || '1', 10)
   const loadedImages = useMemo(() => state.images.filter(img => img.image && !img.loading && !img.error), [state.images])
-  const selectedPresetIdsSet = useMemo(() => new Set(state.selectedPresetIds), [state.selectedPresetIds])
-  const selectedPresets = useMemo(() => (presets || []).filter(p => selectedPresetIdsSet.has(p.id)), [presets, selectedPresetIdsSet])
+
+  // Per-image derived values
+  const totalCombinations = useMemo(() =>
+    loadedImages.reduce((sum, img) => sum + (state.imagePresetSelections[img.id]?.length || 0), 0),
+    [loadedImages, state.imagePresetSelections]
+  )
+  const allAssignedPresetIds = useMemo(() => {
+    const ids = new Set()
+    for (const presetIds of Object.values(state.imagePresetSelections)) {
+      for (const id of presetIds) ids.add(id)
+    }
+    return ids
+  }, [state.imagePresetSelections])
+  const allAssignedPresets = useMemo(() =>
+    (presets || []).filter(p => allAssignedPresetIds.has(p.id)),
+    [presets, allAssignedPresetIds]
+  )
 
   // Validate step
   const step = useMemo(() => {
-    if (urlStep === STEPS.REVIEW && (loadedImages.length === 0 || selectedPresets.length === 0)) return STEPS.UPLOAD
-    if (urlStep === STEPS.EXPORT && (loadedImages.length === 0 || selectedPresets.length === 0)) return STEPS.UPLOAD
+    if (urlStep === STEPS.REVIEW && (loadedImages.length === 0 || totalCombinations === 0)) return STEPS.UPLOAD
+    if (urlStep === STEPS.EXPORT && (loadedImages.length === 0 || totalCombinations === 0)) return STEPS.UPLOAD
     if ([STEPS.UPLOAD, STEPS.REVIEW, STEPS.EXPORT].includes(urlStep)) return urlStep
     return STEPS.UPLOAD
-  }, [urlStep, loadedImages.length, selectedPresets.length])
+  }, [urlStep, loadedImages.length, totalCombinations])
 
   // Fix URL if step was corrected
   useEffect(() => {
@@ -188,8 +234,7 @@ export default function BulkApp() {
   // --- Image loading side effects ---
 
   const handleAddFiles = useCallback((files) => {
-    // Dispatch to add placeholders
-    dispatch({ type: 'ADD_IMAGES', payload: files })
+    dispatch({ type: 'ADD_IMAGES', payload: { files, defaultPresetIds: defaultPresetIdsRef.current } })
   }, [])
 
   // Load images after they're added to state
@@ -231,22 +276,29 @@ export default function BulkApp() {
     dispatch({ type: 'REMOVE_IMAGE', payload: id })
   }, [])
 
-  const handleTogglePreset = useCallback((presetId) => {
-    dispatch({ type: 'TOGGLE_PRESET', payload: presetId })
+  const handleToggleImagePreset = useCallback((imageId, presetId) => {
+    dispatch({ type: 'TOGGLE_IMAGE_PRESET', payload: { imageId, presetId } })
   }, [])
 
-  const handleSelectAll = useCallback(() => {
-    dispatch({ type: 'SELECT_ALL_PRESETS', payload: presets })
-  }, [presets])
+  const handleSetImagePresets = useCallback((imageId, presetIds) => {
+    dispatch({ type: 'SET_IMAGE_PRESETS', payload: { imageId, presetIds } })
+  }, [])
 
-  const handleDeselectAll = useCallback(() => {
-    dispatch({ type: 'DESELECT_ALL_PRESETS' })
+  const handleApplyPresetsToAll = useCallback((presetIds) => {
+    dispatch({ type: 'APPLY_PRESETS_TO_ALL', payload: presetIds })
+  }, [])
+
+  const handleSetDefaultPresets = useCallback((presetIds) => {
+    defaultPresetIdsRef.current = presetIds
   }, [])
 
   const handleContinueToReview = useCallback(() => {
-    dispatch({ type: 'INIT_COMBINATIONS', payload: { presets: selectedPresets, images: loadedImages } })
+    dispatch({
+      type: 'INIT_COMBINATIONS',
+      payload: { allPresets: presets, images: loadedImages, imagePresetSelections: state.imagePresetSelections },
+    })
     setSearchParams({ step: '2' })
-  }, [selectedPresets, loadedImages, setSearchParams])
+  }, [presets, loadedImages, state.imagePresetSelections, setSearchParams])
 
   const handleBackToUpload = useCallback(() => {
     setSearchParams({}, { replace: true })
@@ -264,11 +316,10 @@ export default function BulkApp() {
   const handleExportAll = useCallback(() => {
     resetExport()
     setSearchParams({ step: '3' })
-    // Start export after navigation
     setTimeout(() => {
-      startExport(loadedImages, selectedPresets, state.transforms)
+      startExport(loadedImages, presets, state.imagePresetSelections, state.transforms)
     }, 0)
-  }, [loadedImages, selectedPresets, state.transforms, startExport, resetExport, setSearchParams])
+  }, [loadedImages, presets, state.imagePresetSelections, state.transforms, startExport, resetExport, setSearchParams])
 
   const handleNewBatch = useCallback(() => {
     dispatch({ type: 'RESET' })
@@ -281,7 +332,7 @@ export default function BulkApp() {
     if (!editingKey) return null
     const [imgId, presetId] = editingKey.split('::')
     const img = loadedImages.find(i => i.id === imgId)
-    const preset = selectedPresets.find(p => p.id === presetId)
+    const preset = (presets || []).find(p => p.id === presetId)
     if (!img || !preset) return null
     const { targetWidth, targetHeight } = resolvePresetDimensions(preset, img.image)
     return {
@@ -289,7 +340,7 @@ export default function BulkApp() {
       preset: { ...preset, width: targetWidth, height: targetHeight },
       transforms: state.transforms[editingKey],
     }
-  }, [editingKey, loadedImages, selectedPresets, state.transforms])
+  }, [editingKey, loadedImages, presets, state.transforms])
 
   return (
     <div className="min-h-screen bg-background font-sans">
@@ -316,13 +367,14 @@ export default function BulkApp() {
           {step === STEPS.UPLOAD && (
             <BulkUploadStep
               images={state.images}
-              selectedPresetIds={selectedPresetIdsSet}
+              imagePresetSelections={state.imagePresetSelections}
               presets={presetsLoading ? [] : (presets || [])}
               onAddFiles={handleAddFiles}
               onRemoveImage={handleRemoveImage}
-              onTogglePreset={handleTogglePreset}
-              onSelectAll={handleSelectAll}
-              onDeselectAll={handleDeselectAll}
+              onToggleImagePreset={handleToggleImagePreset}
+              onSetImagePresets={handleSetImagePresets}
+              onApplyPresetsToAll={handleApplyPresetsToAll}
+              onSetDefaultPresets={handleSetDefaultPresets}
               onContinue={handleContinueToReview}
             />
           )}
@@ -330,7 +382,8 @@ export default function BulkApp() {
           {step === STEPS.REVIEW && (
             <BulkReviewStep
               images={loadedImages}
-              selectedPresets={selectedPresets}
+              allPresets={allAssignedPresets}
+              imagePresetSelections={state.imagePresetSelections}
               transforms={state.transforms}
               editedCells={new Set(state.editedCells)}
               onEditCell={handleEditCell}
