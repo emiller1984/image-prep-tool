@@ -93,9 +93,12 @@ export default function MainApp() {
         <p className="text-sm text-text-muted text-center mb-1">
           Resize and position images for email templates
         </p>
-        <div className="text-center mb-6">
+        <div className="flex justify-center gap-4 mb-6">
           <Link to="/bulk" className="text-sm text-primary hover:text-blue-600 transition-colors">
             Bulk Mode &rarr;
+          </Link>
+          <Link to="/visual" className="text-sm text-primary hover:text-blue-600 transition-colors">
+            Visual Mode &rarr;
           </Link>
         </div>
 
