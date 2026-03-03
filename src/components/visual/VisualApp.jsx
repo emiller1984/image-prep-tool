@@ -4,10 +4,11 @@ import JSZip from 'jszip'
 import { dedicatedTemplate } from '../../config/templates'
 import DedicatedTemplate from './DedicatedTemplate'
 import exportImage, { dataUrlToBlob } from '../../utils/exportImage'
-import { calculateFillScale } from '../../utils/calculateTransforms'
+import { calculateFitScale, calculateFillScale } from '../../utils/calculateTransforms'
 
 export default function VisualApp() {
   const [slotImages, setSlotImages] = useState({})
+  const [slotFitModes, setSlotFitModes] = useState({}) // 'fit' | 'fill' per slot, default 'fit'
   const [exporting, setExporting] = useState(false)
   const [exportProgress, setExportProgress] = useState({ current: 0, total: 0 })
   const abortRef = useRef(false)
@@ -36,6 +37,10 @@ export default function VisualApp() {
     img.src = objectUrl
   }, [])
 
+  const handleFitModeChange = useCallback((slotId, mode) => {
+    setSlotFitModes(prev => ({ ...prev, [slotId]: mode }))
+  }, [])
+
   const handleImageRemove = useCallback((slotId) => {
     setSlotImages(prev => {
       if (prev[slotId]) {
@@ -61,16 +66,14 @@ export default function VisualApp() {
 
       const slot = filledSlots[i]
       const { image } = slotImages[slot.id]
+      const fitMode = slotFitModes[slot.id] || 'fit'
 
-      const fillScale = calculateFillScale(
-        image.naturalWidth,
-        image.naturalHeight,
-        slot.exportWidth,
-        slot.exportHeight
-      )
+      const scale = fitMode === 'fill'
+        ? calculateFillScale(image.naturalWidth, image.naturalHeight, slot.exportWidth, slot.exportHeight)
+        : calculateFitScale(image.naturalWidth, image.naturalHeight, slot.exportWidth, slot.exportHeight)
 
       const transforms = {
-        scale: fillScale,
+        scale,
         rotation: 0,
         offsetX: 0,
         offsetY: 0,
@@ -116,7 +119,7 @@ export default function VisualApp() {
     }
 
     setExporting(false)
-  }, [slotImages])
+  }, [slotImages, slotFitModes])
 
   return (
     <div className="min-h-screen bg-background font-sans">
@@ -144,8 +147,10 @@ export default function VisualApp() {
         <div className="min-w-[620px] px-4">
           <DedicatedTemplate
             slotImages={slotImages}
+            slotFitModes={slotFitModes}
             onImageDrop={handleImageDrop}
             onImageRemove={handleImageRemove}
+            onFitModeChange={handleFitModeChange}
           />
         </div>
       </div>

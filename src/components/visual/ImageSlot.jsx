@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react'
  * A single image drop target within the email template.
  * Shows a placeholder when empty, or a center-cropped preview when filled.
  */
-export default function ImageSlot({ slot, imageData, onImageDrop, onImageRemove }) {
+export default function ImageSlot({ slot, imageData, fitMode = 'fit', onImageDrop, onImageRemove, onFitModeChange }) {
   const [dragOver, setDragOver] = useState(false)
 
   const handleDragOver = useCallback((e) => {
@@ -53,10 +53,15 @@ export default function ImageSlot({ slot, imageData, onImageDrop, onImageRemove 
 
   const aspectRatio = slot.renderWidth / slot.renderHeight
 
+  const handleFitModeToggle = useCallback((e, mode) => {
+    e.stopPropagation()
+    onFitModeChange(slot.id, mode)
+  }, [slot.id, onFitModeChange])
+
   if (imageData) {
     return (
       <div
-        className="relative group overflow-hidden"
+        className="relative group overflow-hidden bg-white"
         style={{
           width: `${slot.renderWidth}px`,
           aspectRatio: aspectRatio,
@@ -69,9 +74,11 @@ export default function ImageSlot({ slot, imageData, onImageDrop, onImageRemove 
         <img
           src={imageData.objectUrl}
           alt={slot.label}
-          className="w-full h-full object-cover"
+          className={`w-full h-full ${fitMode === 'fill' ? 'object-cover' : 'object-contain'}`}
           draggable={false}
         />
+
+        {/* Remove button */}
         <button
           onClick={handleRemove}
           className="absolute top-1 right-1 w-6 h-6 bg-black/60 hover:bg-black/80 text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
@@ -79,6 +86,23 @@ export default function ImageSlot({ slot, imageData, onImageDrop, onImageRemove 
         >
           &times;
         </button>
+
+        {/* Fit / Fill toggle */}
+        <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex rounded overflow-hidden opacity-0 group-hover:opacity-100 transition-opacity shadow">
+          <button
+            onClick={(e) => handleFitModeToggle(e, 'fit')}
+            className={`px-2 py-0.5 text-[10px] font-semibold ${fitMode === 'fit' ? 'bg-primary text-white' : 'bg-black/50 text-white/80 hover:bg-black/70'}`}
+          >
+            Fit
+          </button>
+          <button
+            onClick={(e) => handleFitModeToggle(e, 'fill')}
+            className={`px-2 py-0.5 text-[10px] font-semibold ${fitMode === 'fill' ? 'bg-primary text-white' : 'bg-black/50 text-white/80 hover:bg-black/70'}`}
+          >
+            Fill
+          </button>
+        </div>
+
         {dragOver && (
           <div className="absolute inset-0 bg-blue-500/30 border-2 border-blue-500 flex items-center justify-center">
             <span className="text-white text-sm font-semibold bg-blue-500 px-2 py-1 rounded">Replace</span>
