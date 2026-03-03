@@ -9,13 +9,15 @@ function getSlot(id) {
  * Visual representation of the "Dedicated" email template.
  * Renders a 600px-wide email layout with interactive image drop zones.
  */
-export default function DedicatedTemplate({ slotImages, onImageDrop, onImageRemove }) {
+export default function DedicatedTemplate({ slotImages, slotFitModes, onImageDrop, onImageRemove, onFitModeChange }) {
   const renderSlot = (slotId) => (
     <ImageSlot
       slot={getSlot(slotId)}
       imageData={slotImages[slotId]}
+      fitMode={slotFitModes[slotId] || 'fit'}
       onImageDrop={onImageDrop}
       onImageRemove={onImageRemove}
+      onFitModeChange={onFitModeChange}
     />
   )
 
