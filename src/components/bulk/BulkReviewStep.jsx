@@ -1,8 +1,12 @@
 import CombinationThumbnail from './CombinationThumbnail'
 import resolvePresetDimensions from '../../utils/resolvePresetDimensions'
 
-export default function BulkReviewStep({ images, selectedPresets, transforms, editedCells, onEditCell, onBack, onExport }) {
-  const totalCombinations = images.length * selectedPresets.length
+export default function BulkReviewStep({ images, allPresets, imagePresetSelections, transforms, editedCells, onEditCell, onBack, onExport }) {
+  // Only show images that have at least one preset assigned
+  const assignedImages = images.filter(img => (imagePresetSelections[img.id]?.length || 0) > 0)
+  const totalCombinations = assignedImages.reduce(
+    (sum, img) => sum + (imagePresetSelections[img.id]?.length || 0), 0
+  )
 
   return (
     <div>
@@ -32,7 +36,7 @@ export default function BulkReviewStep({ images, selectedPresets, transforms, ed
               <th className="text-left text-[11px] uppercase font-semibold tracking-wider text-text-muted p-2 sticky left-0 bg-surface z-10">
                 Image
               </th>
-              {selectedPresets.map(preset => (
+              {allPresets.map(preset => (
                 <th key={preset.id} className="text-center text-[11px] uppercase font-semibold tracking-wider text-text-muted p-2 min-w-[180px]">
                   <div>{preset.name}</div>
                   <div className="font-normal normal-case">
@@ -43,45 +47,58 @@ export default function BulkReviewStep({ images, selectedPresets, transforms, ed
             </tr>
           </thead>
           <tbody>
-            {images.map(img => (
-              <tr key={img.id} className="border-t border-border">
-                <td className="p-2 sticky left-0 bg-surface z-10">
-                  <div className="flex items-center gap-2 min-w-[120px]">
-                    <img
-                      src={img.image.src}
-                      alt={img.info.name}
-                      className="w-8 h-8 object-cover rounded border border-border flex-shrink-0"
-                    />
-                    <div className="min-w-0">
-                      <div className="text-xs text-text-secondary truncate max-w-[100px]" title={img.info.name}>
-                        {img.info.name}
-                      </div>
-                      <div className="text-[10px] text-text-faint">
-                        {img.info.width}&times;{img.info.height}
+            {assignedImages.map(img => {
+              const assignedIds = imagePresetSelections[img.id] || []
+              return (
+                <tr key={img.id} className="border-t border-border">
+                  <td className="p-2 sticky left-0 bg-surface z-10">
+                    <div className="flex items-center gap-2 min-w-[120px]">
+                      <img
+                        src={img.image.src}
+                        alt={img.info.name}
+                        className="w-8 h-8 object-cover rounded border border-border flex-shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <div className="text-xs text-text-secondary truncate max-w-[100px]" title={img.info.name}>
+                          {img.info.name}
+                        </div>
+                        <div className="text-[10px] text-text-faint">
+                          {img.info.width}&times;{img.info.height}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </td>
-                {selectedPresets.map(preset => {
-                  const key = `${img.id}::${preset.id}`
-                  const { targetWidth, targetHeight } = resolvePresetDimensions(preset, img.image)
-                  return (
-                    <td key={preset.id} className="p-2 text-center">
-                      <div className="inline-block">
-                        <CombinationThumbnail
-                          image={img.image}
-                          transforms={transforms[key]}
-                          targetWidth={targetWidth}
-                          targetHeight={targetHeight}
-                          isEdited={editedCells.has(key)}
-                          onClick={() => onEditCell(key)}
-                        />
-                      </div>
-                    </td>
-                  )
-                })}
-              </tr>
-            ))}
+                  </td>
+                  {allPresets.map(preset => {
+                    const isAssigned = assignedIds.includes(preset.id)
+                    const key = `${img.id}::${preset.id}`
+                    if (!isAssigned) {
+                      return (
+                        <td key={preset.id} className="p-2 text-center">
+                          <div className="inline-flex items-center justify-center w-[160px] h-[80px] bg-gray-50 border border-dashed border-gray-200 rounded-lg text-[10px] text-text-faint">
+                            &mdash;
+                          </div>
+                        </td>
+                      )
+                    }
+                    const { targetWidth, targetHeight } = resolvePresetDimensions(preset, img.image)
+                    return (
+                      <td key={preset.id} className="p-2 text-center">
+                        <div className="inline-block">
+                          <CombinationThumbnail
+                            image={img.image}
+                            transforms={transforms[key]}
+                            targetWidth={targetWidth}
+                            targetHeight={targetHeight}
+                            isEdited={editedCells.has(key)}
+                            onClick={() => onEditCell(key)}
+                          />
+                        </div>
+                      </td>
+                    )
+                  })}
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
