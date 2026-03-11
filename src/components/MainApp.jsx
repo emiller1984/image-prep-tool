@@ -83,23 +83,26 @@ export default function MainApp() {
     setSearchParams({}, { replace: true })
   }, [clearImage, setSearchParams])
 
+  const isSelectStep = step === STEPS.SELECT
+
   return (
     <div className="min-h-screen bg-background font-sans">
       <div className="max-w-[760px] mx-auto px-4 py-8">
-        {/* Title */}
-        <h1 className="text-[26px] font-bold text-text-primary text-center mb-2">
-          Email Image Resizer
-        </h1>
-        <p className="text-sm text-text-muted text-center mb-1">
-          Resize and position images for email templates
-        </p>
-        <div className="flex justify-center gap-4 mb-6">
-          <Link to="/bulk" className="text-sm text-primary hover:text-blue-600 transition-colors">
-            Bulk Mode &rarr;
-          </Link>
-          <Link to="/visual" className="text-sm text-primary hover:text-blue-600 transition-colors">
-            Visual Mode &rarr;
-          </Link>
+        <div className={`mb-6 ${isSelectStep ? 'rounded-lg bg-white/60 px-4 py-4' : ''}`}>
+          <h1 className={`text-[26px] mb-2 ${isSelectStep ? 'font-normal text-[#2851DD]' : 'font-bold text-text-primary text-center'}`}>
+            Email Image Resizer
+          </h1>
+          <p className={`text-sm text-text-muted mb-1 ${isSelectStep ? '' : 'text-center'}`}>
+            Resize and position images for email templates
+          </p>
+          <div className={`flex gap-4 ${isSelectStep ? '' : 'justify-center'}`}>
+            <Link to="/bulk" className="text-sm text-primary hover:text-blue-600 transition-colors">
+              Bulk Mode &rarr;
+            </Link>
+            <Link to="/visual" className="text-sm text-primary hover:text-blue-600 transition-colors">
+              Visual Mode &rarr;
+            </Link>
+          </div>
         </div>
 
         {/* Step Indicator */}
