@@ -4,7 +4,7 @@ import { useCallback } from 'react'
  * Provides a render function to draw an image onto a canvas with transforms.
  */
 export default function useCanvasRenderer() {
-  const render = useCallback((canvas, image, transforms, targetWidth, targetHeight) => {
+  const render = useCallback((canvas, image, transforms, targetWidth, _targetHeight) => {
     if (!canvas || !image) return
     const ctx = canvas.getContext('2d')
     const displayScale = canvas.width / targetWidth

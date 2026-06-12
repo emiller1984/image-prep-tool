@@ -1,11 +1,9 @@
 import { useRef, useEffect, useCallback } from 'react'
-import useCanvasRenderer from '../hooks/useCanvasRenderer'
 import downsample from '../utils/downsample'
 
 export default function EditorCanvas({ image, transforms, targetWidth, targetHeight, onPan, onZoom }) {
   const containerRef = useRef(null)
   const canvasRef = useRef(null)
-  const { render } = useCanvasRenderer()
   const isDraggingRef = useRef(false)
   const lastPosRef = useRef({ x: 0, y: 0 })
 

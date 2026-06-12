@@ -9,7 +9,6 @@ export default function BulkUploadStep({
   onAddFiles,
   onRemoveImage,
   onToggleImagePreset,
-  onSetImagePresets,
   onApplyPresetsToAll,
   onSetDefaultPresets,
   onContinue,

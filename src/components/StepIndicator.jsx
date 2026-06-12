@@ -7,7 +7,6 @@ export default function StepIndicator({ currentStep }) {
         const stepNum = i + 1
         const isCompleted = stepNum < currentStep
         const isActive = stepNum === currentStep
-        const isUpcoming = stepNum > currentStep
 
         return (
           <div key={label} className="flex items-center">

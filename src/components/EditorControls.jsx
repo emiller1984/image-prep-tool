@@ -2,7 +2,6 @@ import { calculateFitScale, calculateFillScale } from '../utils/calculateTransfo
 
 export default function EditorControls({ image, transforms, setTransforms, targetWidth, targetHeight }) {
   const fitScale = calculateFitScale(image.naturalWidth, image.naturalHeight, targetWidth, targetHeight, transforms.rotation)
-  const fillScale = calculateFillScale(image.naturalWidth, image.naturalHeight, targetWidth, targetHeight, transforms.rotation)
 
   const scalePercent = Math.round((transforms.scale / fitScale) * 100)
 
