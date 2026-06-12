@@ -4,9 +4,15 @@ on:
   push:
     branches: [main]
 
+# Queue deploys so concurrent pushes can't run overlapping FTP uploads
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
