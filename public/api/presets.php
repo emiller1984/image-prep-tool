@@ -22,17 +22,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $input = file_get_contents('php://input');
+    $input = file_get_contents('php://input', false, null, 0, 1048577);
+    if (strlen($input) > 1048576) {
+        http_response_code(413);
+        echo json_encode(['error' => 'Payload too large']);
+        exit;
+    }
     $data = json_decode($input, true);
     if ($data === null) {
         http_response_code(400);
         echo json_encode(['error' => 'Invalid JSON']);
         exit;
     }
+    if (!is_array($data) || !isset($data['items']) || !is_array($data['items'])) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Expected an object with an items array']);
+        exit;
+    }
     if (!is_dir($dataDir)) {
         mkdir($dataDir, 0755, true);
     }
-    file_put_contents($dataFile, json_encode($data, JSON_PRETTY_PRINT));
+    $written = file_put_contents($dataFile, json_encode($data, JSON_PRETTY_PRINT), LOCK_EX);
+    if ($written === false) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Failed to write presets']);
+        exit;
+    }
     echo json_encode(['success' => true]);
     exit;
 }
